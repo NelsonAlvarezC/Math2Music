@@ -26,6 +26,9 @@ _start:
 
 
     sub rsp, 0x20
+    vmovdqu [rbp-0x20], ymm0 
+    vpxor ymm0, ymm0, ymm0
+    vmovdqu ymm0, [rbp-0x20] 
 
     mov rsp, rbp
     pop rbp
