@@ -4,6 +4,7 @@ section .data
     base            dq  2.0
     freq            dq  261.63
     samplerate      dq  44100.0
+    amplitude       dq  4096.0
     ymm_size        dq  4.0
     double_consts   dq  1.0,2.0,3.0,4.0
 
@@ -11,6 +12,7 @@ section .text
 
 global math2music
 global get_time_vector
+global get_waves
 extern pow
 
 math2music:
@@ -164,5 +166,70 @@ get_time_vector:
     mov rsp, rbp
     pop rbp
     ret
+
+; extern void get_waves(double* dst, double* freqs, double* time_v, int size, double duration);
+get_waves:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 0x40                               ; rbp-0x8   = rax
+                                                ; rbp-0x10  = rbx
+                                                ; rbp-0x18  = rcx
+                                                ; rbp-0x20  = rdx
+                                                ; rbp-0x28  = rdi
+                                                ; rbp-0x30  = rsi
+                                                ; rbp-0x38  = time_v
+   
+    vmovsd xmm1, [samplerate]                   ; xmm1 = samplerate
+                                                ; xmm0 = duration
+    vmulsd  xmm1, xmm0, xmm1                    ; xmm1 = samplerate*duration
+    vcvtsd2si rax, xmm1                         ; rax = (long)xmm1[0q]
+    mov [rbp-0x8], rax
+    mov [rbp-0x18], rcx
+    mov [rbp-0x28], rdi
+    mov [rbp-0x30], rsi
+    mov [rbp-0x38], rdx
+    
+    xor rbx, rbx
+.notes_loop:
+    mov [rbp-0x10], rbx
+
+    mov rbx, [rbp-0x38]                         ; rbx = time_v
+    xor rdx, rdx
+    .inner_loop:
+        mov rsi, [rbp-0x30]
+        vbroadcastsd ymm0, [rsi]
+        vbroadcastsd ymm2, [amplitude]
+        mov [rbp-0x20], rdx
+        vmovupd ymm1, [rbx+rdx*8]               ; ymm1 = times
+        vmulpd ymm1, ymm1, ymm0                 ; ymm1 = times*freq
+        
+
+        vmulpd ymm1, ymm1, ymm2                 ; ymm2 = amplitude*times*freq
+        mov rdi, [rbp-0x28]
+        vmovdqu [rdi], ymm1
+        add rdi, 32
+        mov [rbp-0x28], rdi
+
+        mov rdx, [rbp-0x20]
+        add rdx, 4
+        mov rax, [rbp-0x8]
+        cmp rdx, rax
+        jbe .inner_loop
+    
+    mov rsi, [rbp-0x30]
+    add rsi, 8
+    mov [rbp-0x30], rsi
+
+    mov rcx, [rbp-0x18]
+    mov rbx, [rbp-0x10]
+    inc rbx,
+    cmp rbx, rcx 
+    jb .notes_loop
+
+
+    mov rsp, rbp
+    pop rbp
+    ret
+
 
 

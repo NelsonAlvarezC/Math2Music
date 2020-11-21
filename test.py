@@ -37,10 +37,8 @@ a_wave = get_wave(440)
 
 #wave features
 print(a_wave.dtype) # 44100
+print(a_wave[0]);
+print(a_wave[1]);
+print(a_wave[2]);
 print(np.max(a_wave)) # 4096
 print(np.min(a_wave)) # -4096
-
-
-note_freqs = get_piano_notes()
-print(type(note_freqs.get('C')))
-pprint(note_freqs)
