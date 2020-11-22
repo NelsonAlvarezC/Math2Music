@@ -1,5 +1,7 @@
 from pprint import pprint
 import numpy as np
+import struct
+from scipy.io.wavfile import write
 
 samplerate = 44100
 
@@ -30,15 +32,30 @@ def get_piano_notes():
     note_freqs[''] = 0.0 # silent note
     
     return note_freqs
-  
-  # To get the piano note's frequencies
-a_wave = get_wave(440)
 
+def get_song_data(music_notes):
+    '''
+    Function to concatenate all the waves (notes)
+    '''
+    note_freqs = get_piano_notes() # Function that we made earlier
+    song = [get_wave(note_freqs[note]) for note in music_notes.split('-')]
+    song = np.concatenate(song)
+    return song 
+
+
+  # To get the piano note's frequencies
+a_wave = get_wave(261.63)
+note_freqs = get_piano_notes()
+music_notes = 'C-D'
+
+data = get_song_data(music_notes)
+write('test.wav',samplerate, data)
+
+def float_to_hex(f):
+    return hex(struct.unpack('<Q', struct.pack('<d', f))[0])
 
 #wave features
-print(a_wave.dtype) # 44100
-print(a_wave[0]);
-print(a_wave[1]);
-print(a_wave[2]);
-print(np.max(a_wave)) # 4096
-print(np.min(a_wave)) # -4096
+print(float_to_hex(data[0]));
+print(float_to_hex(data[1]));
+print(float_to_hex(data[2]));
+print(float_to_hex(data[3]));

@@ -1,5 +1,6 @@
 section .data
     dict            db  0x43,0x63,0x44,0x64,0x45,0x46,0x66,0x47,0x67,0x41,0x61,0x42
+    pi              dq  3.14159265358979323846
     n_notes         dq  12.0
     base            dq  2.0
     freq            dq  261.63
@@ -14,6 +15,7 @@ global math2music
 global get_time_vector
 global get_waves
 extern pow
+extern sin
 
 math2music:
     push rbp
@@ -149,6 +151,10 @@ get_time_vector:
     movsd xmm3, xmm4
     vpermpd ymm3, ymm3, 0x39                    ; ymm3[0q] = ymm3[1q], ymm3[1q] = ymm3[2q], ... , ymm3[3q] = ymm3[0q]
                                                 ; ymm3 = {1.0,2.0,3.0,4.0}
+    vbroadcastsd ymm4, [pi]
+    vbroadcastsd ymm5, [double_consts+8]
+    vmulpd ymm0, ymm0, ymm4
+    vmulpd ymm0, ymm0, ymm5                     ; ymm0[0:3q] = duration/samplerate * pi * 2
     vpxor xmm4, xmm4, xmm4
     vmovsd [rdi], xmm4
     add rdi, 8
@@ -171,7 +177,7 @@ get_time_vector:
 get_waves:
     push rbp
     mov rbp, rsp
-    sub rsp, 0x40                               ; rbp-0x8   = rax
+    sub rsp, 0x80                               ; rbp-0x8   = rax
                                                 ; rbp-0x10  = rbx
                                                 ; rbp-0x18  = rcx
                                                 ; rbp-0x20  = rdx
@@ -198,15 +204,29 @@ get_waves:
     .inner_loop:
         mov rsi, [rbp-0x30]
         vbroadcastsd ymm0, [rsi]
-        vbroadcastsd ymm2, [amplitude]
         mov [rbp-0x20], rdx
-        vmovupd ymm1, [rbx+rdx*8]               ; ymm1 = times
-        vmulpd ymm1, ymm1, ymm0                 ; ymm1 = times*freq
-        
+        vmovupd ymm1, [rbx+rdx*8]               ; ymm1 = times*pi*2
+        vmulpd ymm0, ymm1, ymm0                 ; ymm0 = times*pi*2*freq
+        xor rax, rax
+        .sine_loop:
 
-        vmulpd ymm1, ymm1, ymm2                 ; ymm2 = amplitude*times*freq
+            vmovdqu [rbp-0x60], ymm0
+            mov [rbp - 0x40], rax
+            call sin
+            movsd xmm1, xmm0                    ; ymm1[0q] = sin(ymm0[0q])
+            vmovdqu ymm0, [rbp-0x60]
+            movsd xmm0, xmm1                    
+            mov rax, [rbp - 0x40]  
+            vpermpd ymm0, ymm0, 0x39                    
+
+            inc rax
+            cmp rax, 4
+            jb .sine_loop
+
+        vbroadcastsd ymm2, [amplitude]
+        vmulpd ymm0, ymm0, ymm2                 ; ymm0 = amplitude * sin (2 * pi * times * freq)
         mov rdi, [rbp-0x28]
-        vmovdqu [rdi], ymm1
+        vmovdqu [rdi], ymm0
         add rdi, 32
         mov [rbp-0x28], rdi
 
