@@ -2,6 +2,8 @@ from pprint import pprint
 import numpy as np
 import struct
 from scipy.io.wavfile import write
+import scipy.signal as signal
+import matplotlib.pyplot as plt
 
 samplerate = 44100
 
@@ -14,7 +16,6 @@ def get_wave(freq, duration=0.5):
     
     amplitude = 4096
     t = np.linspace(0, duration, int(samplerate * duration))
-    print(t[22048])
     wave = amplitude * np.sin(2 * np.pi * freq * t)
     
     return wave
@@ -42,20 +43,25 @@ def get_song_data(music_notes):
     song = np.concatenate(song)
     return song 
 
+def butter_lowpass(cutoff, fs, order=5):
+    nyq = 0.5 * fs
+    normal_cutoff = cutoff / nyq
+    b, a = signal.butter(order, normal_cutoff, btype='low', analog=False)
+    return b, a
 
   # To get the piano note's frequencies
 a_wave = get_wave(261.63)
+
 note_freqs = get_piano_notes()
-music_notes = 'C-D'
+music_notes = 'C-C-C-D-D-D-E-E-D-D-C-C'
 
 data = get_song_data(music_notes)
+
+b, a = signal.iirnotch(290.6, 30.0, 44100.0)
+w, h = signal.freqz(b,a, fs = 44100.0)
+
+data2 = signal.filtfilt(b,a,data)
+#data2 = signal.convolve(data, w)
+
 write('test.wav',samplerate, data)
-
-def float_to_hex(f):
-    return hex(struct.unpack('<Q', struct.pack('<d', f))[0])
-
-#wave features
-print(float_to_hex(data[0]));
-print(float_to_hex(data[1]));
-print(float_to_hex(data[2]));
-print(float_to_hex(data[3]));
+write('test2.wav',samplerate, data2)
