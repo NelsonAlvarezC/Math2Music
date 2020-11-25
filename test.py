@@ -2,7 +2,8 @@ import numpy as np
 import scipy.signal as signal
 import matplotlib.pyplot as plt
 
-from scipy.io.wavfile import write
+from scipy.io.wavfile import write, read
+from playsound import playsound
 
 samplerate = 44100
 
@@ -50,21 +51,24 @@ def make_pass_band_filter(freq = 293.66974569918125):
     h = h.tolist();
     return h;
 
-a_wave = get_wave(261.63)
+def play_wav(name):
+    playsound(name)
+
+#a_wave = get_wave(261.63)
 
 
-note_freqs = get_piano_notes()
-music_notes = 'C-C-C-D-D-D-E-E-D-D-C-C'
+#note_freqs = get_piano_notes()
+#music_notes = 'C-C-C-D-D-D-E-E-D-D-C-C'
 
-data = get_song_data(music_notes)
+#data = get_song_data(music_notes)
 
-h = make_pass_band_filter()
+#h = make_pass_band_filter()
 #w1, h1 = signal.freqz(h, fs = 44100.0, worN=4000)
 
 #plt.plot(w1, 20*np.log10(np.abs(h1)), 'b')
 #plt.show();
 
-data_filtered = signal.convolve(data, h, mode="valid")
+#data_filtered = signal.convolve(data, h, mode="valid")
 
 #write('test.wav',samplerate, data)
-write('test3.wav',samplerate, data_filtered)
+#write('test3.wav',samplerate, data_filtered)

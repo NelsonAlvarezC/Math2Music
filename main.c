@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <float.h>
+#include <unistd.h>
 #include "filewave.h"
 
 #define PY_SSIZE_T_CLEAN
@@ -11,26 +12,55 @@ extern void math2music(double* dst, char* src, int size);
 extern void get_time_vector(double* dst, double duration);
 extern void get_waves(double* dst, double* freqs, double* time_v, int size, double duration);
 
-int get_python_filter(){
+void* call_python_function(char* func_name, char* params[], int params_count){
+
+    void* return_value = NULL;
+    char* cwd = (char*)malloc(100);
+    if(getcwd(cwd, 100) == NULL){
+        fprintf(stderr, "Could not find current working directory\n");
+        free(cwd);
+        return NULL;
+    }
+
+    char* sys_path_command = (char*)malloc(150);
+    strcpy(sys_path_command, "import sys; sys.path.insert(0, \'");
+    strcat(sys_path_command,cwd);
+    strcat(sys_path_command, "\')\0");
+
     Py_Initialize();
-    PyRun_SimpleString ("import sys; sys.path.insert(0, '/home/kali/Documents/Assembly/Tarea3')");
+    PyRun_SimpleString (sys_path_command);
+
+    //Py_Initialize();
+    //PyRun_SimpleString ("import sys; sys.path.insert(0, '/home/kali/Documents/Assembly/Tarea3')");
+
+    free(cwd);
+    free(sys_path_command);
+
     PyObject* pName = PyUnicode_DecodeFSDefault((char*)"test");
     PyObject* pModule = PyImport_Import(pName);
     Py_DECREF(pName);
 
     if(pModule != NULL){
-        PyObject* pFunc = PyObject_GetAttrString(pModule, (char*)"make_pass_band_filter");
+        PyObject* pFunc = PyObject_GetAttrString(pModule, func_name);
 
         if(pFunc && PyCallable_Check(pFunc)){
-            PyObject* pArgs = PyTuple_New(1);
-            PyObject* pValue = PyFloat_FromDouble(290.6);
-            if(!pValue){
-                Py_DECREF(pArgs);
-                Py_DECREF(pModule);
-                fprintf(stderr, "Cannot do conversion from Double to PyFloat\n");
-                return 1;
+            PyObject* pArgs = PyTuple_New(params_count);    // creates tuple for parameters
+            PyObject* pValue;                               // used to convert values
+            char *ptr;
+            for(int i = 0; i < params_count; ++i){
+                if(strtod(params[i], &ptr))
+                    pValue = PyFloat_FromDouble(strtod(params[i], &ptr));
+                else
+                    pValue = PyUnicode_DecodeFSDefault(params[i]);
+
+                if(!pValue){
+                    Py_DECREF(pArgs);
+                    Py_DECREF(pModule);
+                    fprintf(stderr, "Parameters conversion error\n");
+                    return NULL;
+                }
+                PyTuple_SetItem(pArgs, i, pValue);
             }
-            PyTuple_SetItem(pArgs, 0, pValue);
         
             pValue = PyObject_CallObject(pFunc, pArgs);
             Py_DECREF(pArgs);
@@ -50,7 +80,7 @@ int get_python_filter(){
         else{
             if(PyErr_Occurred())
                 PyErr_Print();
-            fprintf(stderr, "Cannot find function \"%s\"\n", "make_pass_band_filter");
+            fprintf(stderr, "Cannot find function \"%s\"\n", func_name);
         }
         Py_XDECREF(pFunc);
         Py_DECREF(pModule);
@@ -58,16 +88,21 @@ int get_python_filter(){
     else{
         PyErr_Print();
         fprintf(stderr, "Failed to load \"%s\"\n","test");
-        return 1;
+        return NULL;
     }
     Py_FinalizeEx();
-    return 0;
+    return return_value;
 }
 
 
 
 int main(){
-    get_python_filter();
+    char* args[1];
+    args[0] = (char*)malloc(20);
+    strcpy(args[0], "my.wav\0");
+
+    call_python_function("play_wav", args, 1); 
+
     return 0;
     char* notes = (char*)malloc(100);
     double* freqs = (double*)malloc(100*sizeof(double));
