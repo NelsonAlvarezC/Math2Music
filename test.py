@@ -1,9 +1,8 @@
-from pprint import pprint
 import numpy as np
-import struct
-from scipy.io.wavfile import write
 import scipy.signal as signal
 import matplotlib.pyplot as plt
+
+from scipy.io.wavfile import write
 
 samplerate = 44100
 
@@ -43,25 +42,29 @@ def get_song_data(music_notes):
     song = np.concatenate(song)
     return song 
 
-def butter_lowpass(cutoff, fs, order=5):
-    nyq = 0.5 * fs
-    normal_cutoff = cutoff / nyq
-    b, a = signal.butter(order, normal_cutoff, btype='low', analog=False)
-    return b, a
+def make_pass_band_filter(freq = 293.66974569918125):
+    f1 = freq - 15.0
+    f2 = freq + 15.0
+    h = signal.firwin(2001, [f1, f2], fs = 44100.0, pass_zero = False)
 
-  # To get the piano note's frequencies
+    h = h.tolist();
+    return h;
+
 a_wave = get_wave(261.63)
+
 
 note_freqs = get_piano_notes()
 music_notes = 'C-C-C-D-D-D-E-E-D-D-C-C'
 
 data = get_song_data(music_notes)
 
-b, a = signal.iirnotch(290.6, 30.0, 44100.0)
-w, h = signal.freqz(b,a, fs = 44100.0)
+h = make_pass_band_filter()
+#w1, h1 = signal.freqz(h, fs = 44100.0, worN=4000)
 
-data2 = signal.filtfilt(b,a,data)
-#data2 = signal.convolve(data, w)
+#plt.plot(w1, 20*np.log10(np.abs(h1)), 'b')
+#plt.show();
 
-write('test.wav',samplerate, data)
-write('test2.wav',samplerate, data2)
+data_filtered = signal.convolve(data, h, mode="valid")
+
+#write('test.wav',samplerate, data)
+write('test3.wav',samplerate, data_filtered)
