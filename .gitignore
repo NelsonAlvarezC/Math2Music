@@ -1,0 +1,17 @@
+#object files
+*.o
+
+#output files
+*.out
+
+#wav files
+*.wav
+
+#text files
+*.txt
+
+#python cache dir
+__pycache__
+
+#debugger specific
+.gdb_history
