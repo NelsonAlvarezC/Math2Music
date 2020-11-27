@@ -94,7 +94,6 @@ void* call_python_function(PyObject* pModule,char* func_name,char* params[], int
             fprintf(stderr, "[Call_python_function] Cannot find function \"%s\"\n", func_name);
         }
         Py_XDECREF(pFunc);
-        Py_DECREF(pModule);
     }
     else{
         PyErr_Print();

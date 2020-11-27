@@ -13,7 +13,7 @@ void read_line_stdin(char* buffer, int size){
 
 int get_input_notes(char* buffer, int size){
     int done = 0;
-    printf("Select input option\n 1. Standard input\n 2. File\n> ");
+    printf("Select input option (Another to quit)\n 1. Standard input\n 2. File\n> ");
     read_line_stdin(buffer, size);
     if(buffer[0] == 0x31){
         printf("Write your notes\n> ");
@@ -35,4 +35,23 @@ int get_input_notes(char* buffer, int size){
     else
         done = 1;
     return done;
+}
+
+char* get_output_name(){
+    char* name = (char*)malloc(50);
+    fprintf(stdout,"Write name of output file without extension\n> ");
+    read_line_stdin(name, 46);
+    strcat(name, ".wav\0");
+    return name;
+}
+
+int ask_play_song(){
+    int play = 1;
+    char *buffer = (char*)malloc(10);
+    fprintf(stdout, "Play song [Y/n]? ");
+    read_line_stdin(buffer, 10);
+    if(strlen(buffer) && ((buffer[0] == 'n') || (buffer[0] == 'N')))
+            play = 0;
+    free(buffer);
+    return play;
 }

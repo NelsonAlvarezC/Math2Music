@@ -133,6 +133,7 @@ get_time_vector:
     vmulsd  xmm1, xmm0, xmm1                    ; xmm1 = samplerate*duration
     vcvtsd2si rax, xmm1                         ; rax = (long)xmm1[0q]
     xor rcx, rcx
+    add rcx, 4
     vbroadcastsd ymm2, [ymm_size]                ; ymm2[0:3q] = 4.0
     vmovsd xmm4, [double_consts]
     movsd xmm3, xmm4
@@ -166,7 +167,7 @@ get_time_vector:
     add rcx, 4
     add rdi, 32
     cmp rcx, rax
-    jbe .main_loop
+    jb .main_loop
 
 
     mov rsp, rbp

@@ -12,18 +12,8 @@ extern void math2music(double* dst, char* src, int size);
 extern void get_time_vector(double* dst, double duration);
 extern void get_waves(double* dst, double* freqs, double* time_v, int size, double duration);
 
-int main(){
-    char* buffer = (char*)malloc(INPUT_SIZE);
-    while(!get_input_notes(buffer, INPUT_SIZE)){
-
-    }
-    free(buffer);
-    return 0;
-
-
-    char* notes = (char*)malloc(100);
-    double* freqs = (double*)malloc(100*sizeof(double));
-    strcpy(notes, "CD FfgDECDECD FfgDECD Ffg\0");
+void create_song(char* notes, char* output_name){
+    double* freqs = (double*)malloc(INPUT_SIZE*sizeof(double));
     unsigned int notes_len = strlen(notes);
     
     double duration = 0.5;
@@ -34,41 +24,50 @@ int main(){
 
     get_time_vector(time_v, duration);
     
-
     math2music(freqs, notes , notes_len);
 
     get_waves(waves, freqs, time_v, notes_len, duration);
 
     wave_header_t* header = make_wave_header(notes_len*samples_by_note, 1, samplerate, 8);
-    write_wav("my.wav", waves, header, notes_len, samples_by_note);
-    
-    // no longer needed
+    write_wav(output_name, waves, header, notes_len, samples_by_note);
+   
     free(header);
-    free(notes);
     free(freqs);
     free(time_v);
     free(waves);
+}
+
+int main(){
+    char* buffer = (char*)malloc(INPUT_SIZE);
     
-    char* args[1];
-    double* filter;
-    args[0] = (char*)malloc(20);
-    strcpy(args[0], "my.wav\0");
-
+    char* name;
     init_interpreter();
-    PyObject* module_play_wav;
-    if((module_play_wav = init_module("filter_n_play")) != NULL)
-        call_python_function(module_play_wav, "play_wav", args, 1);
+    PyObject* module_wav = init_module("filter_n_play");
+    char* args[1];
+    args[0] = (char*)malloc(50);
 
-    strcpy(args[0], "293.6\0");
-    if(module_play_wav){
-        filter = (double*)call_python_function(module_play_wav, "make_pass_band_filter", args, 1);
-            for(int i = 0; i < 10; ++i)
-                printf("[Main] Result: %.6e\n",filter[i]);
-        end_module(module_play_wav);
+    while(!get_input_notes(buffer, INPUT_SIZE)){
+        name = get_output_name();
+        create_song(buffer, name);
+        if(ask_play_song()){
+            if(module_wav){
+                strcpy(args[0], name);
+                call_python_function(module_wav, "play_wav", args, 1);
+            }
+            else
+                fprintf(stderr, "[Play_song] Could not load Module\n");
+        }
+        free(name);
     }
-    end_interpreter();
+    if(module_wav)
+        end_module(module_wav);
 
-    free(filter);
+    end_interpreter();
+    free(buffer);
     free(args[0]);
+
     return 0;
 }
+        //filter = (double*)call_python_function(module_play_wav, "make_pass_band_filter", args, 1);
+            //for(int i = 0; i < 10; ++i)
+                //printf("[Main] Result: %.6e\n",filter[i]);
