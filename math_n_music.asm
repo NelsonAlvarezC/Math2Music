@@ -14,6 +14,7 @@ section .text
 global math2music
 global get_time_vector
 global get_waves
+global convolve
 extern pow
 extern sin
 
@@ -263,10 +264,47 @@ get_waves:
 convolve:
     push rbp
     mov rbp, rsp
-
+    sub rsp, 0x10
     
+    xor rbx, rbx
+.main_loop:
+    mov [rbp-0x10], rbx                          ; save counter i
+    mov [rbp-0x8], rcx                          ; save len_result
+   
+    mov rcx, rbx
+    mov rax, r8
+    dec rax
+    xor rbx, rbx
+    cmp rcx, rax                                ; i >= len_filter - 1
+    jb .start_zero
+    add rbx, rcx
+    sub rbx, rax                                ; ebx = i - (len_filter-1)
+    .start_zero:                                ; ebx start counter
+    mov rax, [rbp-0x10]                         ; rax = i
+    vmovsd xmm0, [rdi+rax*8]                    ; xmm0 = y[i]
+    cmp rcx, r9
+    jb .inner_loop
+    mov rcx, r9
+    dec rcx
+    .inner_loop:
+        vmovsd xmm1, [rdx+rbx*8]                ; xmm1 = x[j]
+        mov r10, rax
+        sub r10, rbx
+        vmovsd xmm2, [rsi+r10*8]               ; xmm2 = h[i-j]
+        vmulsd xmm1, xmm1, xmm2                 ; xmm1 = h[i-j]*x[j]
+        vaddsd xmm0, xmm1                       ; xmm0 += xmm1
 
+        inc rbx
+        cmp rbx, rcx
+        jbe .inner_loop
+    vmovsd [rdi+rax*8], xmm0                    ; y[i] = xmm0
+    mov rbx, [rbp-0x10]
+    mov rcx, [rbp-0x8]
+    inc rbx
+    cmp rbx, rcx
+    jb .main_loop
 
+    mov rax, rdi
     mov rsp, rbp
     pop rbp
     ret

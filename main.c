@@ -11,11 +11,12 @@
 extern void math2music(double* dst, char* src, int size);
 extern void get_time_vector(double* dst, double duration);
 extern void get_waves(double* dst, double* freqs, double* time_v, int size, double duration);
+extern double* convolve(double* dst, double* filter, double* signal, unsigned int len_dst, unsigned int len_filter, unsigned int len_signal);
 
+/*
 double* convolve(double* h, double* x, int len_h, int len_x, unsigned int* len_y){
     (*len_y) = len_h + len_x - 1;
     
-    int start_h;
     int start_x;
     int end_x;
 
@@ -30,6 +31,7 @@ double* convolve(double* h, double* x, int len_h, int len_x, unsigned int* len_y
 
     return y;
 }
+*/
 
 void play_song(char* name, PyObject* pModule, char* args[]){
     if(ask_play_song()){
@@ -95,7 +97,10 @@ int main(){
                 printf("Doing filter with freq: %lf\n", filter_freq[0]);
                 sprintf(args[0], "%lf", filter_freq[0]);
                 double* filter = call_python_function(module_wav, "make_pass_band_filter", args, 1, &len_filter);
-                double* filtered = convolve(filter, waves, len_filter, len_waves, &len_filtered);
+                len_filtered = len_filter + len_waves - 1;
+                double* filtered = (double*)calloc(len_filtered, sizeof(double));
+                printf("Len: %d filtered[%d] = %lf\n", len_filtered, len_filtered-1, filtered[len_filtered-1]);
+                convolve(filtered, filter, waves, len_filtered, len_filter,len_waves);
                 wave_header_t* header = make_wave_header(len_filtered, 1, 44100, 8);
                 write_wav(name, filtered, header, 1, len_filtered);
                 play_song(name, module_wav, args);
@@ -120,6 +125,3 @@ int main(){
 
     return 0;
 }
-        //filter = (double*)call_python_function(module_play_wav, "make_pass_band_filter", args, 1);
-            //for(int i = 0; i < 10; ++i)
-                //printf("[Main] Result: %.6e\n",filter[i]);
