@@ -55,3 +55,20 @@ int ask_play_song(){
     free(buffer);
     return play;
 }
+
+char ask_filter_song(){
+    char filter = 1;
+    char *buffer = (char*)malloc(10);
+    printf("Filter song (It may sound wrong with python player) [Y/n]? ");
+    read_line_stdin(buffer, 10);
+    if(strlen(buffer) && ((buffer[0] == 'n') || (buffer[0] == 'N')))
+            filter = 0;
+    if(filter){
+        printf("Choose a note\n> ");
+        read_line_stdin(buffer, 10);
+        filter = buffer[0];
+    }
+    free(buffer);
+
+    return filter;
+}

@@ -46,7 +46,7 @@ void end_module(PyObject* pModule){
 }
 
 // This code does not support multiple return values as Python does
-void* call_python_function(PyObject* pModule,char* func_name,char* params[], int params_count){
+void* call_python_function(PyObject* pModule,char* func_name,char* params[], int params_count, unsigned int* array_size){
     void* return_value = NULL;
 
     if(pModule != NULL){
@@ -76,14 +76,12 @@ void* call_python_function(PyObject* pModule,char* func_name,char* params[], int
             if(PyList_Check(pValue)){
                 PyObject *pTemp;
                 double* temp = (double*)malloc(sizeof(double)*(int)(PyList_Size(pValue)));
-                printf("[Call_python_function] List size: %d\n", (int)PyList_Size(pValue));
+                (*array_size) = (unsigned int)PyList_Size(pValue);
                 for(int i = 0; i < (int)PyList_Size(pValue);++i){
                     pTemp = PyList_GetItem(pValue, i);
                     temp[i] = PyFloat_AS_DOUBLE(pTemp);
                 }
                 Py_DECREF(pTemp);
-                for(int i = 0; i < 10; ++i)
-                    printf("[Call_python_function] Result: %.6e\n",temp[i]);
                 return_value = (void*)temp;
             }
             Py_DECREF(pValue);

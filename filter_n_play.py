@@ -44,8 +44,8 @@ def get_song_data(music_notes):
     return song 
 
 def make_pass_band_filter(freq = 293.66974569918125):
-    f1 = freq - 15.0
-    f2 = freq + 15.0
+    f1 = freq - 10.0
+    f2 = freq + 10.0
     h = signal.firwin(2001, [f1, f2], fs = 44100.0, pass_zero = False)
 
     h = h.tolist();
@@ -54,7 +54,9 @@ def make_pass_band_filter(freq = 293.66974569918125):
 def play_wav(name):
     playsound(name)
 
+
 #a_wave = get_wave(261.63)
+
 
 
 #note_freqs = get_piano_notes()

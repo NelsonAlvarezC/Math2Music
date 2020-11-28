@@ -253,4 +253,20 @@ get_waves:
     ret
 
 
+; params:
+;   rdi: result
+;   rsi: filter
+;   rdx: signal
+;   ecx: len_result
+;   r8d: len_filter
+;   r9d: len_signal
+convolve:
+    push rbp
+    mov rbp, rsp
 
+    
+
+
+    mov rsp, rbp
+    pop rbp
+    ret
