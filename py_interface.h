@@ -1,3 +1,4 @@
+// Author: Nelson Alvarez
 #pragma once
 
 #ifndef PY_SSIZE_T_CLEAN

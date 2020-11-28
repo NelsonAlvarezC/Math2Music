@@ -11,14 +11,14 @@ section .data
 
 section .text
 
-global math2music
+global notes_2_freq
 global get_time_vector
 global get_waves
 global convolve
 extern pow
 extern sin
 
-math2music:
+notes_2_freq:
     push rbp
     mov rbp, rsp
     sub rsp, 0x50
