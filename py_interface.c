@@ -12,6 +12,7 @@ void init_interpreter(){
         
         Py_Initialize();
 
+        // Needed to add path of correct directory
         char* sys_path_command = (char*)malloc(150);
         strcpy(sys_path_command, "import sys; sys.path.insert(0, \'");
         strcat(sys_path_command,cwd);
@@ -38,6 +39,7 @@ PyObject* init_module(char* name){
         fprintf(stderr,"[Init_module] Module could not be loaded\n");
     return pModule;
 }
+
 void end_module(PyObject* pModule){
     if(PyModule_Check(pModule))
         Py_DECREF(pModule);
@@ -50,21 +52,22 @@ void* call_python_function(PyObject* pModule,char* func_name,char* params[], int
     void* return_value = NULL;
 
     if(pModule != NULL){
+        // gets the python function to call
         PyObject* pFunc = PyObject_GetAttrString(pModule, func_name);
 
         if(pFunc && PyCallable_Check(pFunc)){
             PyObject* pArgs = PyTuple_New(params_count);    // creates tuple for parameters
             PyObject* pValue;                               // used to convert values
-            char *ptr;
+            char *ptr;                                      // needed for strtod
             for(int i = 0; i < params_count; ++i){
                 if(strtod(params[i], &ptr))
-                    pValue = PyFloat_FromDouble(strtod(params[i], &ptr));
+                    pValue = PyFloat_FromDouble(strtod(params[i], &ptr));   // It's double
                 else
-                    pValue = PyUnicode_DecodeFSDefault(params[i]);
+                    pValue = PyUnicode_DecodeFSDefault(params[i]);          // Use it as a string
 
                 if(!pValue){
-                    Py_DECREF(pArgs);
-                    Py_DECREF(pModule);
+                    Py_DECREF(pArgs);                                       // Free memory
+                    Py_DECREF(pModule);                                     //   "    "
                     fprintf(stderr, "[Call_python_function] Parameters conversion error\n");
                     return NULL;
                 }

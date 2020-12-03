@@ -1,5 +1,7 @@
 section .data
+; Valid notes--------------C----c----D----d----E----F----f----G----g----A----a----B
     dict            db  0x43,0x63,0x44,0x64,0x45,0x46,0x66,0x47,0x67,0x41,0x61,0x42
+; ---------------------------------------------------------------------------------
     pi              dq  3.14159265358979323846
     n_notes         dq  12.0
     base            dq  2.0
@@ -18,14 +20,15 @@ global convolve
 extern pow
 extern sin
 
+; converts notes into frequencies
 notes_2_freq:
     push rbp
     mov rbp, rsp
     sub rsp, 0x50
     xor rcx,rcx
-    mov [rbp-0x38], rdi
-    mov [rbp-0x40], rsi
-    mov [rbp-0x44], edx
+    mov [rbp-0x38], rdi                         ; [rbp-0x38] destination buffer: frequencies
+    mov [rbp-0x40], rsi                         ; [rbp-0x40] source buffer: notes
+    mov [rbp-0x44], edx                         ; [rbp-0x44] length of notes
 
 .main_loop:
     mov rsi, [rbp-0x40]
@@ -38,10 +41,10 @@ notes_2_freq:
         vpbroadcastb xmm1, byte [dict + rdx]    ;xmm1[0:15b] = dict[rdx]
         vmovd xmm2, edx                         
         vpbroadcastb xmm2, xmm2                 ;xmm2[0:15b] = edx (index)
-        vpcmpeqb xmm3, xmm0, xmm1               ;xmm1[0:15b] == xmm0[0:15b] : xmm3 mask
-        vpaddb xmm6, xmm6, xmm3                 ;save mask for later
-        vpand xmm4, xmm3, xmm2                  
-        vpaddb xmm5, xmm5, xmm4                 ;xmm5[0:15b] = indexes
+        vpcmpeqb xmm3, xmm0, xmm1               ;xmm3 = xmm1[0:15b] == xmm0[0:15b]
+        vpaddb xmm6, xmm6, xmm3                 ;save mask for later in xmm6
+        vpand xmm4, xmm3, xmm2                  ;xmm4 = index && mask
+        vpaddb xmm5, xmm5, xmm4                 ;xmm5[0:15b] = indexes (based on edx value)
 
         inc rdx
         cmp rdx, 12
@@ -49,66 +52,66 @@ notes_2_freq:
                                                 ;save in stack because call to get_frequency
     vmovdqu [rbp-0x10], xmm6                    ;store mask
     vmovdqu [rbp-0x20], xmm5                    ;store indexes
-    mov [rbp - 0x28], rcx                       ;store counter
+    mov [rbp - 0x28], rcx                       ;store main counter
     xor rdx, rdx
-    mov [rbp - 0x30], rdx                       ;store counter
+    mov [rbp - 0x30], rdx                       ;store get_frequencies counter as 0
 
     .get_frequencies:
     call get_frequency
-    vmovdqu xmm6, [rbp-0x10]
-    vmovdqu xmm5, [rbp-0x20]
-    vpmovsxbq ymm7, xmm6                        ;ymm6[0:3q] = xmm6[0:3b]
-    vpand ymm0, ymm0, ymm7                      ;ymm0[x] = 0 if not a note in mask
+    vmovdqu xmm6, [rbp-0x10]                    ;xmm6 = mask
+    vmovdqu xmm5, [rbp-0x20]                    ;xmm5 = indexes
+    vpmovsxbq ymm7, xmm6                        ;ymm7[0:3q] = xmm6[0:3b]
+    vpand ymm0, ymm0, ymm7                      ;ymm0[x] = 0 if (ymm7[x] = 0)
     
     mov rdi, [rbp-0x38]
     vmovdqu [rdi], ymm0                         ;destination[0:3q] = ymm0[0:3q]
     add rdi, 32                                 ;destination += 32 bytes
-    mov [rbp-0x38], rdi
+    mov [rbp-0x38], rdi                         ;store destination
 
     vpshufd xmm5, xmm5, 0x39                    ;shuffle xmm5 to get wanted scalar
     vpshufd xmm6, xmm6, 0x39                    ;shuffle xmm6 to get wanted mask
     vmovdqu [rbp-0x10], xmm6                    ;store mask after shuffle
     vmovdqu [rbp-0x20], xmm5                    ;store indexes after shuffle
     mov rdx, [rbp - 0x30]                       
-    inc rdx
-    mov [rbp - 0x30], rdx                       
+    inc rdx                                     ;increase get_frequencies counter
+    mov [rbp - 0x30], rdx                       ;store it
     cmp rdx, 4
     jb .get_frequencies
 
-    mov rcx, [rbp-0x28] 
-    add rcx, 16
-    mov eax, [rbp-0x44]
-    cmp rcx, rax
+    mov rcx, [rbp-0x28]                         ;get main counter
+    add rcx, 16                                 ;increase it by 16
+    mov eax, [rbp-0x44]                         ;get notes length
+    cmp rcx, rax                                ;compare counter with length
     jb .main_loop
 
     leave
     ret
 
-   
+; Returns the frequency of a note based on its index starting with C = 0 
 get_frequency:
     push rbp
     mov rbp, rsp
     sub rsp, 0x30
     
-    vmovq xmm0, [n_notes]
+    vmovq xmm0, [n_notes]                       ; xmm0[0q] = 12.0
     vpermpd ymm0, ymm0, 0x00                    ; ymm0[0:3q] = 12.0
     vpxor ymm3, ymm3
     vpxor ymm1, ymm1
-    vmovd eax, xmm5
-    vmovd xmm1, eax                             ; xmm1 = xmm5[0:3q]
+    vmovd eax, xmm5                             ; eax = xmm5[0:3b]
+    vmovd xmm1, eax                             ; xmm1 = xmm5[0:3b] = low 4 indexes of xmm5
     vpunpcklbw ymm1, ymm1, ymm3 
-    vpunpcklwd ymm1, ymm1, ymm3
-    vcvtdq2pd ymm1, xmm1                        ; ymm1[0:3q] = float(note_index) 
+    vpunpcklwd ymm1, ymm1, ymm3                 ; ymm1[0:3q] = int(indexes)
+    vcvtdq2pd ymm1, xmm1                        ; ymm1[0:3q] = float(indexes) 
     vdivpd ymm1, ymm1, ymm0                     ; ymm1[0:3q] = ymm1[0:3q]/12
     
     xor rdx, rdx
-.calc_pow:
-    vmovdqu [rbp-0x20], ymm1
-    mov [rbp - 0x28], rdx
+.calc_pow:                                      ; calculate pow for each index
+    vmovdqu [rbp-0x20], ymm1                    ; store indexes
+    mov [rbp - 0x28], rdx                       ; store counter
     vmovq xmm0, [base]  
     call pow 
-    vmovdqu ymm1, [rbp-0x20]
-    mov rdx, [rbp - 0x28]  
+    vmovdqu ymm1, [rbp-0x20]                    ; restore indexes
+    mov rdx, [rbp - 0x28]                       ; restore counter
     movsd xmm1, xmm0                            ; ymm1[0q] = pow(ymm1[0q])
     vpermpd ymm1, ymm1, 0x39                    ; ymm1[0q] = ymm1[1q], ymm1[1q] = ymm1[2q], ... , ymm1[3q] = ymm1[0q]
     inc rdx
@@ -124,6 +127,8 @@ get_frequency:
     pop rbp
     ret
 
+; extern void get_time_vector(double* dst, double duration);
+; creates a time vector based on samplerate and duration
 get_time_vector:
     push rbp
     mov rbp, rsp
@@ -176,15 +181,16 @@ get_time_vector:
     ret
 
 ; extern void get_waves(double* dst, double* freqs, double* time_v, int size, double duration);
+; creates a waves vector based on frequencies and time vector
 get_waves:
     push rbp
     mov rbp, rsp
     sub rsp, 0x80                               ; rbp-0x8   = rax
                                                 ; rbp-0x10  = rbx
-                                                ; rbp-0x18  = rcx
-                                                ; rbp-0x20  = rdx
-                                                ; rbp-0x28  = rdi
-                                                ; rbp-0x30  = rsi
+                                                ; rbp-0x18  = rcx = size
+                                                ; rbp-0x20  = rdx = counter
+                                                ; rbp-0x28  = dst
+                                                ; rbp-0x30  = freqs
                                                 ; rbp-0x38  = time_v
    
     vmovsd xmm1, [samplerate]                   ; xmm1 = samplerate
@@ -254,6 +260,7 @@ get_waves:
     ret
 
 
+; extern double* convolve(double* dst, double* filter, double* signal, unsigned int len_dst, unsigned int len_filter, unsigned int len_signal);
 ; params:
 ;   rdi: result
 ;   rsi: filter
@@ -261,6 +268,7 @@ get_waves:
 ;   ecx: len_result
 ;   r8d: len_filter
 ;   r9d: len_signal
+; performs the convolution between an input signal and kernel filter
 convolve:
     push rbp
     mov rbp, rsp
@@ -268,7 +276,7 @@ convolve:
     
     xor rbx, rbx
 .main_loop:
-    mov [rbp-0x10], rbx                          ; save counter i
+    mov [rbp-0x10], rbx                         ; save counter i
     mov [rbp-0x8], rcx                          ; save len_result
    
     mov rcx, rbx
@@ -290,7 +298,7 @@ convolve:
         vmovsd xmm1, [rdx+rbx*8]                ; xmm1 = x[j]
         mov r10, rax
         sub r10, rbx
-        vmovsd xmm2, [rsi+r10*8]               ; xmm2 = h[i-j]
+        vmovsd xmm2, [rsi+r10*8]                ; xmm2 = h[i-j]
         vmulsd xmm1, xmm1, xmm2                 ; xmm1 = h[i-j]*x[j]
         vaddsd xmm0, xmm1                       ; xmm0 += xmm1
 
